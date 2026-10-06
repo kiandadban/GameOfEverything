@@ -27,8 +27,13 @@ class PlanResult(BaseModel):
     final_violations: list[Violation] = []
 
 
-def plan(request: str, verbose: bool = False, console=None) -> PlanResult:
-    """Full planning pipeline: user request → validated EntityGraph."""
+def plan(request: str, verbose: bool = False, console=None, os_override: str | None = None) -> PlanResult:
+    """Full planning pipeline: user request → validated EntityGraph.
+
+    os_override: if set, force every designed system's OS to this distro instead
+        of whatever design_systems inferred from the request. This makes the OS a
+        deterministic build input (user/agent-chosen) rather than LLM inference.
+    """
     from goe.config import GoEConfig
 
     cfg = GoEConfig.get()
@@ -38,11 +43,24 @@ def plan(request: str, verbose: bool = False, console=None) -> PlanResult:
         if verbose:
             print(msg)
 
+    # Normalize the override up front so an invalid --os fails fast with a clear error.
+    if os_override is not None:
+        from goe.distros import normalize_os
+
+        os_override = normalize_os(os_override)
+
     # Step 0: Design systems
     if console:
         console.plan_step("Designing systems", "analyzing infrastructure needs")
     _log(f"[planner] Step 0: designing systems for request...")
     systems = design_systems(request, model=model)
+
+    # Authoritative OS selection: override the LLM's inferred os with the
+    # explicit choice so System.os — not the prompt text — drives the build.
+    if os_override is not None:
+        systems = [s.model_copy(update={"os": os_override}) for s in systems]
+        _log(f"[planner] OS override applied: all systems -> {os_override!r}")
+
     _log(f"[planner] designed {len(systems)} system(s)")
     if console:
         console.plan_result(f"Designed {len(systems)} system(s)")

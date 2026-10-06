@@ -100,6 +100,7 @@ def build_entity(
     system_context: str | None = None,
     provided_values: dict | None = None,
     console=None,  # RunConsole | None
+    os: str = "ubuntu",
 ) -> "BuildOutcome":
     """Run the full build pipeline for a single entity.
 
@@ -233,7 +234,7 @@ def build_entity(
 
     _owns_env = env is None
     if _owns_env:
-        env = TestEnvironment(runtime=runtime, scope=scope or f"build_{entity.id[:16]}")
+        env = TestEnvironment(runtime=runtime, scope=scope or f"build_{entity.id[:16]}", os=os)
         env.setup()
 
     def _make_deploy_script(artifact) -> str:

@@ -42,7 +42,7 @@ class TestSystem:
     def test_basic(self): # Test if the System can be created with basic parameters
         s = System(
             id="webserver",
-            os="ubuntu_22.04",
+            os="ubuntu",
             services=["nginx", "node"],
             network=NetworkConfig(hostname="webserver", exposed_ports=[80], internal_ports=[]),
         )
@@ -51,7 +51,7 @@ class TestSystem:
     def test_round_trip(self): # Test that serializing and deserializing gives the same object
         s = System(
             id="db",
-            os="ubuntu_22.04",
+            os="ubuntu",
             services=["postgresql"],
             network=NetworkConfig(hostname="db", exposed_ports=[], internal_ports=[5432]),
         )
