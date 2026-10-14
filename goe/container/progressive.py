@@ -122,8 +122,10 @@ class ProgressiveEnvironment:
 
         logger.info(f"[ProgressiveEnvironment] Provisioning {len(specs)} service(s) for system {system.id}")
 
-        # Generate and execute service deployment script
-        deploy_script = registry.deploy_all(specs)
+        # Generate and execute service deployment script (profile-driven install
+        # so package names/manager match this system's distro).
+        from goe.distros import get_profile
+        deploy_script = registry.deploy_all(specs, profile=get_profile(self._os))
         exit_code, stdout, stderr = self._exec_in_target(deploy_script)
 
         if exit_code != 0:
