@@ -39,7 +39,7 @@ type: exec_attacker
 command: "curl -s http://${target_host}:${target_port}/..."
 ```
 
-**Shell (target container — use for ubuntu/misconfig entities to verify exploitation):**
+**Shell (target container — use for `system`/misconfig entities to verify exploitation):**
 ```yaml
 type: exec_target
 command: "find / -perm -4000 -user root 2>/dev/null"

@@ -322,7 +322,7 @@ def _deploy_with_exposed_ports(result, port_specs: list[str]) -> None:
         return
 
     # Detect runtime from graph
-    runtime = "ubuntu"
+    runtime = "system"
     if result.graph:
         runtimes = {e.runtime.value for e in result.graph.entities}
         if len(runtimes) == 1:
@@ -332,7 +332,7 @@ def _deploy_with_exposed_ports(result, port_specs: list[str]) -> None:
         expose_ports = _parse_port_specs(port_specs)
     else:
         port: int | None = None
-        if runtime != "ubuntu":
+        if runtime != "system":
             from goe.runtimes.registry import get_registry
             try:
                 port = get_registry().port_for(runtime)
@@ -553,12 +553,12 @@ def _test_single(args, out_dir: Path, playbook_path: Path) -> None:
             from goe.flow.checkpoint import load_state
             state = load_state(ckpt_path)
             runtimes = {e.runtime.value for e in state.graph.entities}
-            runtime = runtimes.pop() if len(runtimes) == 1 else "ubuntu"
+            runtime = runtimes.pop() if len(runtimes) == 1 else "system"
         else:
-            runtime = "ubuntu"
+            runtime = "system"
 
     port: int | None = None
-    if runtime != "ubuntu":
+    if runtime != "system":
         from goe.runtimes.registry import get_registry
         try:
             port = get_registry().port_for(runtime)

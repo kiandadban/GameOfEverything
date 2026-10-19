@@ -12,7 +12,7 @@ from goe.runtimes.registry import get_registry
 # Base images for runtimes that have no web-runtime template and no distro
 # profile (not built from a BuildArtifact). Web-runtime images live in
 # goe/runtimes/templates/*.yaml as `target_image` (looked up via
-# RuntimeRegistry.image_for()); the OS-level `ubuntu` runtime resolves its image
+# RuntimeRegistry.image_for()); the OS-level `system` runtime resolves its image
 # from the selected distro profile instead (see _image_for).
 _BASE_IMAGES: dict[str, str] = {
     "preset": "goe-preset-target:latest",
@@ -22,13 +22,19 @@ _BASE_IMAGES: dict[str, str] = {
 def _image_for(runtime: str, os: str = "ubuntu") -> str:
     """Resolve the Docker image for a runtime.
 
-    Order: web-runtime template → OS-level distro profile (for the `ubuntu`
-    system runtime, keyed by `os`) → remaining base images (e.g. preset).
+    Order: web-runtime template → OS-level distro profile (for the `system`
+    runtime, keyed by `os`) → remaining base images (e.g. preset).
+
+    The runtime string is normalized first, so a legacy "ubuntu" runtime (from an
+    old checkpoint or a direct caller) still resolves to the OS-level `system` path.
     """
+    from goe.models.entity import normalize_runtime
+
+    runtime = normalize_runtime(runtime)
     registry = get_registry()
     if registry.has_runtime(runtime):
         return registry.image_for(runtime)
-    if runtime == "ubuntu":
+    if runtime == "system":
         return get_profile(os).image
     if runtime in _BASE_IMAGES:
         return _BASE_IMAGES[runtime]
@@ -41,7 +47,7 @@ def _image_for(runtime: str, os: str = "ubuntu") -> str:
 class TestEnvironment:
     """Wraps v1 TestEnvironmentTool with a clean interface for the v2 executor."""
 
-    def __init__(self, runtime: str = "ubuntu", scope: str = "", enable_browser: bool = True, expose_ports: dict[int, int] | None = None, os: str = "ubuntu"):
+    def __init__(self, runtime: str = "system", scope: str = "", enable_browser: bool = True, expose_ports: dict[int, int] | None = None, os: str = "ubuntu"):
         image = _image_for(runtime, os)
         from goe.container.test_environment_tool import TestEnvironmentTool
         self._tool = TestEnvironmentTool(

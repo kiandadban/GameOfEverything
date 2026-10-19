@@ -7,7 +7,7 @@ required_vars: []
 MongoDB has historically shipped with authentication disabled by default. This atom ensures `authorization` is disabled in `mongod.conf` and that MongoDB listens on all interfaces, allowing any host to connect and read or write any database.
 
 ### Logic Requirements:
-1. Install MongoDB: `apt-get install -y mongodb` (or `mongodb-org` for the official package)
+1. Install MongoDB using the target distro's package manager (see the **Target OS** section); the package is typically `mongodb` or the official `mongodb-org`.
 2. Configure `mongod.conf` to bind to all interfaces and disable auth:
    - Set `net.bindIp: 0.0.0.0`
    - Set `security.authorization: disabled` (or remove the security section entirely)

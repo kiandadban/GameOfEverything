@@ -51,7 +51,7 @@ def _detect_port_collisions(graph: "EntityGraph", order: list[str]) -> list[str]
         entity = graph.entity_by_id(eid)
         runtime = entity.runtime.value
         sid = entity.system_id
-        if runtime == "ubuntu":
+        if runtime == "system":
             continue
         try:
             port = registry.port_for(runtime)

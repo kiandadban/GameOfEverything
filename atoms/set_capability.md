@@ -7,7 +7,7 @@ required_vars: [binary_path, capability]
 Linux capabilities partition root privileges into discrete units. Assigning dangerous capabilities (e.g. `cap_setuid+ep`) to a binary owned or executable by a low-priv user allows privilege escalation without a visible SUID bit.
 
 ### Logic Requirements:
-1. Ensure `libcap2-bin` is installed (provides `setcap`): `apt-get install -y libcap2-bin`
+1. Ensure the package providing `setcap` is installed (`libcap2-bin` on apt-based distros), using the target distro's package manager (see the **Target OS** section).
 2. Set the capability on the binary: `setcap <capability> <binary_path>`
 3. Optionally make the binary world-executable if it is not already: `chmod a+x <binary_path>`
 
