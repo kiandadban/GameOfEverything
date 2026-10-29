@@ -30,6 +30,8 @@ class ServiceRegistry:
         "smb": "samba",
         "cifs": "samba",
         "mariadb": "mysql",
+        "mongod": "mongodb",
+        "mongo": "mongodb",
         "httpd": "apache",
         "vsftpd": "ftp",
         "php-fpm": "php_fpm",

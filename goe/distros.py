@@ -31,10 +31,18 @@ APT_BASE_PACKAGES: tuple[str, ...] = (
     "iputils-ping",
     # Process management
     "procps",
+    # Binary/string inspection — attack procedures routinely use `strings`
+    # (from binutils) to verify file-write primitives (e.g. keys written to a
+    # Redis dump). Distro-neutral: binutils ships on every supported family.
+    "binutils",
     # Common attack surface packages (pre-installed on real servers)
     "sudo",
     "openssh-server",
     "sshpass",
+    # Capability tooling — provides setcap/getcap for the set_capability atom, so
+    # the atom never has to install a package manager itself. (Red Hat renames this
+    # to `libcap`; a future profile handles that via package_aliases.)
+    "libcap2-bin",
 )
 
 # Canonical package name -> real package name on Debian-family distros.
