@@ -34,8 +34,13 @@ A service is configured with a weak or well-known password for its admin or defa
 
 **MySQL / MariaDB (root user) — service already running:**
 ```bash
-mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '<password>'; FLUSH PRIVILEGES;"
-mysql -e "CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY '<password>'; GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION; FLUSH PRIVILEGES;"
+# Do ALL of this in ONE `mysql -e` call = ONE connection. On Debian's MariaDB,
+# root@localhost uses unix_socket auth (passwordless as system root). If you set a
+# password on root@localhost in one `mysql -e` and then run a SECOND `mysql -e`, that
+# second connection has no socket auth and is denied — so create/grant the remote user
+# FIRST and change root@localhost LAST, in a single semicolon-separated statement.
+# (Use `mysql -e`, not a heredoc — heredocs nest badly inside generated setup scripts.)
+mysql -e "CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY '<password>'; ALTER USER 'root'@'%' IDENTIFIED BY '<password>'; GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION; ALTER USER 'root'@'localhost' IDENTIFIED BY '<password>'; FLUSH PRIVILEGES;"
 ```
 
 **PostgreSQL (postgres superuser) — service already running:**

@@ -22,19 +22,27 @@ A database server is configured to accept connections from any IP address rather
 > it. The entity script MUST NOT install or start the database. It applies only the
 > vulnerability: changing the bind/listen address to all interfaces and reloading. Use
 > the `db_type` the planner chose — do not switch engines.
+>
+> **This atom owns network exposure only — NOT credentials.** It must not create users or
+> set/alter passwords. For engines with no default auth (Redis, MongoDB) exposure alone
+> grants access. For MySQL/MariaDB and PostgreSQL, a remote login additionally requires a
+> credential atom (e.g. `weak_service_password`) or an auth-disable atom — the planner
+> pairs those in. Creating a root user here would collide with whatever that credential
+> atom pins, so leave accounts and passwords entirely to it.
 
 ### Logic Requirements:
 1. Modify the bind-address / listen configuration of the pinned `<db_type>` to `0.0.0.0` or equivalent.
 2. Reload (not reinstall) the service so the new bind address takes effect, without a distro init system (no `systemctl`).
+3. Do NOT create users or set passwords — exposure only. Authentication is a separate atom's job.
 
 ### Common Patterns:
 
 **MySQL / MariaDB:**
 ```bash
-# Point the daemon at all interfaces (version-agnostic: write a drop-in conf)
-echo -e "[mysqld]\nbind-address = 0.0.0.0" > /etc/mysql/conf.d/expose.cnf
-# Grant remote access to root, then reload privileges (service already running)
-mysql -e "CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY 'root'; GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION; FLUSH PRIVILEGES;"
+# The recipe already binds MariaDB to 0.0.0.0; add a drop-in only if it isn't already.
+# Exposure only — do NOT create users or set passwords here (weak_service_password does).
+grep -rqs "bind-address.*0.0.0.0" /etc/mysql/ \
+  || echo -e "[mysqld]\nbind-address = 0.0.0.0" > /etc/mysql/conf.d/expose.cnf
 ```
 
 **PostgreSQL:**
@@ -62,4 +70,4 @@ sed -i 's/^bind 127.0.0.1/bind 0.0.0.0/' /etc/redis/redis.conf
 3. Verify data is accessible: run a query or list databases.
 
 ### Synthesis Guidance:
-Install/start/bind of the engine is owned by the service recipe for the pinned `db_type`; the entity must not duplicate it. The atom applies only the bind-address change (+ a remote grant for MySQL) and a reload. Always resolve the exact config path for the installed version (e.g. PostgreSQL paths vary: `/etc/postgresql/14/main/` vs `/etc/postgresql/16/main/`) with a glob/`find` rather than hardcoding. Combine with `weak_service_password` or auth-disabling atoms to make the exposure directly exploitable.
+Install/start/bind of the engine is owned by the service recipe for the pinned `db_type`; the entity must not duplicate it. The atom applies only the bind-address/listen change and a reload — it NEVER creates users or sets passwords (that is `weak_service_password`'s job, and doing both here causes a credential collision). Always resolve the exact config path for the installed version (e.g. PostgreSQL paths vary: `/etc/postgresql/14/main/` vs `/etc/postgresql/16/main/`) with a glob/`find` rather than hardcoding. For MySQL/PostgreSQL, exposure alone is not remotely authenticable — the planner pairs `weak_service_password` (or an auth-disable atom) to make it exploitable; for Redis/MongoDB (no default auth) exposure alone suffices.
