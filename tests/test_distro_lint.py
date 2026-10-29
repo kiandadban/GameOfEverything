@@ -67,6 +67,29 @@ def test_procedure_step_is_linted_and_attributed():
     assert findings[0].token == "systemctl"
 
 
+# --- foreign package managers (keyed off the profile's own manager) ---
+
+def test_foreign_dnf_flagged_on_apt_target():
+    findings = lint(DEBIAN, "dnf install -y redis", None)
+    assert any(f.token == "dnf" for f in findings)
+
+
+def test_foreign_apk_flagged_on_apt_target():
+    assert any(f.token == "apk" for f in lint(DEBIAN, "apk add redis", None))
+
+
+def test_native_apt_not_flagged_as_foreign():
+    # apt is Debian's own manager — it must never be reported as a foreign manager.
+    findings = lint(DEBIAN, "apt-get install -y openssh-server", None)
+    assert not any(f.token in {"apt", "dnf", "yum", "apk", "pacman", "zypper"} for f in findings)
+
+
+def test_foreign_manager_reported_once_per_manager():
+    # `yum` and `rpm` both map to the dnf family -> a single finding, not two.
+    findings = lint(DEBIAN, "yum install -y foo && rpm -i bar.rpm", None)
+    assert len([f for f in findings if f.token == "dnf"]) == 1
+
+
 # --- a fully clean build yields nothing ---
 
 def test_clean_build_no_findings():

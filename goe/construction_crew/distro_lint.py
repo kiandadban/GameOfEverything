@@ -54,6 +54,21 @@ _UBUNTU_ONLY: tuple[tuple[str, str, str], ...] = (
      "PPAs are an Ubuntu-only package source and are not available on {distro}."),
 )
 
+# Package-manager tokens by manager. Keyed off the profile's own package_manager,
+# so a command using a *foreign* manager (e.g. `dnf` on an apt target, or a lingering
+# `apt-get` on a future dnf/Red Hat target) is a cross-distro leak. The target's own
+# manager is never flagged. This stays correct as new profiles (dnf/apk) register —
+# it reads profile.package_manager, not a hardcoded distro. Now that service installs
+# route through the recipe layer, this is the net that catches residual manager leakage
+# an atom's prose might still carry.
+_PKG_MANAGER_TOKENS: dict[str, tuple[str, ...]] = {
+    "apt": (r"\bapt-get\b", r"\bapt\b", r"\bdpkg\b"),
+    "dnf": (r"\bdnf\b", r"\byum\b", r"\brpm\b"),
+    "apk": (r"\bapk\b",),
+    "pacman": (r"\bpacman\b",),
+    "zypper": (r"\bzypper\b",),
+}
+
 
 def _commands(procedure: "Procedure | None") -> list[tuple[str, str]]:
     """Extract (where, command-text) pairs from a procedure's shell-bearing steps."""
@@ -93,6 +108,18 @@ def _lint_text(profile: "DistroProfile", where: str, text: str) -> list[LintFind
                 where, canonical,
                 f"package `{canonical}` is installed, but on {profile.name} the package is "
                 f"`{real}` — use the distro's package name."))
+
+    # 4. Foreign package managers — a manager that is not this distro's. One finding
+    #    per foreign manager detected, so `apt-get`+`apt` on a dnf target counts once.
+    for manager, patterns in _PKG_MANAGER_TOKENS.items():
+        if manager == profile.package_manager:
+            continue
+        if any(re.search(p, text) for p in patterns):
+            findings.append(LintFinding(
+                where, manager,
+                f"`{manager}` is used, but {profile.name} uses `{profile.package_manager}` "
+                f"— install packages with the target distro's package manager (or let the "
+                f"service recipe install them)."))
 
     return findings
 
