@@ -57,6 +57,14 @@ class Entity(BaseModel):
     requires: list[Requirement]
     provides: list[str]
     atoms: list[str] = []
+    # Planner-pinned atom configuration. Generic atoms (e.g. database_expose) are
+    # parameterized — the concrete choice (which `db_type`/`service`, which
+    # credentials) is committed here at plan time, as structured data, rather than
+    # being improvised by the build agent. This serves two consumers: the
+    # atom->service bridge resolves `requires_service_by` against it to install the
+    # right recipe deterministically, and the developer agent is constrained to
+    # these exact values so generation matches the installed service.
+    config: dict[str, str] = {}
 
     @field_validator("runtime", mode="before")
     @classmethod

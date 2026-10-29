@@ -156,6 +156,24 @@ You MUST use these exact values in your implementation and must NOT regenerate t
 
     context_section = f"{system_context}\n" if system_context else ""
 
+    # Planner-pinned atom config (db_type/service/credentials). These are authoritative:
+    # the deterministic service layer has already installed the recipe matching the pinned
+    # service, so the script MUST build for exactly these values — picking a different
+    # engine or credential would mismatch what is actually installed and running.
+    pinned_config = getattr(entity, "config", None) or {}
+    config_section = f"""## Pinned Atom Config (ALREADY DETERMINED — build for exactly these)
+
+```json
+{json.dumps(pinned_config, indent=2)}
+```
+
+The matching service (e.g. the `db_type`/`service` below) is ALREADY installed and started
+by the platform's service recipe. Implement the vulnerability for exactly these values — do
+NOT substitute a different engine, user, or password, and do NOT install or start the service
+yourself.
+
+""" if pinned_config else ""
+
     user_msg = f"""## Entity Spec
 
 ```json
@@ -168,7 +186,7 @@ You MUST use these exact values in your implementation and must NOT regenerate t
 {plan.model_dump_json(indent=2)}
 ```
 
-{spec_section}{schema_section}{prefilled_section}## Incoming Edge Values
+{spec_section}{config_section}{schema_section}{prefilled_section}## Incoming Edge Values
 
 ```json
 {json.dumps(incoming_edges, indent=2)}

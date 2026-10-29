@@ -27,6 +27,51 @@ class PlanResult(BaseModel):
     final_violations: list[Violation] = []
 
 
+def _attach_required_services(entities, systems):
+    """Union each entity's atoms' declared required services into its System.
+
+    The atom->service bridge. Atoms declare ``requires_service`` in their
+    frontmatter (see ``construction_crew.atoms.required_services``); here we ensure
+    those recipes are present on the entity's system so the deterministic,
+    distro-aware service layer installs the package — instead of the atom
+    hardcoding ``apt-get`` in its prose. Idempotent: a service already declared on
+    a system is never duplicated. Returns a new systems list; inputs are unchanged.
+    """
+    from goe.construction_crew.atoms import resolve_required_services
+    from goe.models.system import ServiceSpec
+
+    sys_ids = {s.id for s in systems}
+    needed: dict[str, list[str]] = {}
+    for e in entities:
+        if e.system_id not in sys_ids:
+            continue
+        for atom_id in (e.atoms or []):
+            # Resolve both static (requires_service) and dynamic
+            # (requires_service_by, keyed off the entity's planner-pinned config)
+            # service needs, so parameterized atoms install the recipe matching the
+            # service the planner actually chose.
+            for svc in resolve_required_services(atom_id, getattr(e, "config", None)):
+                bucket = needed.setdefault(e.system_id, [])
+                if svc not in bucket:
+                    bucket.append(svc)
+
+    if not needed:
+        return systems
+
+    updated = []
+    for s in systems:
+        extra = needed.get(s.id, [])
+        have = {spec.id for spec in s.services}
+        new_specs = list(s.services) + [
+            ServiceSpec(id=svc) for svc in extra if svc not in have
+        ]
+        updated.append(
+            s if len(new_specs) == len(s.services)
+            else s.model_copy(update={"services": new_specs})
+        )
+    return updated
+
+
 def plan(request: str, verbose: bool = False, console=None, os_override: str | None = None) -> PlanResult:
     """Full planning pipeline: user request → validated EntityGraph.
 
@@ -108,6 +153,12 @@ def plan(request: str, verbose: bool = False, console=None, os_override: str | N
         _log(f"[planner] specified {len(entities)} entities")
         if console:
             console.plan_result(f"Specified {len(entities)} entities with full details")
+
+        # Step 2.5: Bridge atoms -> services. Union each entity's atoms' declared
+        # required services into its system, so the deterministic, distro-aware
+        # recipe layer installs them instead of the atom hardcoding apt-get in its
+        # prose. Idempotent, so re-running on a full replan is safe.
+        systems = _attach_required_services(entities, systems)
 
         prior_violations: list[Violation] | None = None
 
